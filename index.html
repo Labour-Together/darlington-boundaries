@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Darlington — Administrative Boundaries (Striped)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #FEF4F4;
+      font-family: 'Geist', -apple-system, sans-serif;
+      color: #111;
+      padding: 28px 0 20px;
+    }
+
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 4px;
+    }
+
+    .hdr-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #E8002D;
+      border: 1.5px solid #E8002D;
+      display: inline-block;
+      padding: 2px 7px;
+      margin-bottom: 10px;
+    }
+
+    h2 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+
+    .hdr-sub {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
+    hr.rule {
+      border: none;
+      border-top: 1.5px solid #111;
+      margin-bottom: 16px;
+    }
+
+    .toggles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 4px 9px 4px 7px;
+      border: 1.5px solid #ccc;
+      background: transparent;
+      font-family: 'Geist', sans-serif;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #777;
+      cursor: pointer;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+      white-space: nowrap;
+    }
+
+    .btn:hover { border-color: #999; color: #333; }
+
+    .btn.on {
+      border-color: var(--c);
+      color: var(--c);
+      background: color-mix(in srgb, var(--c) 9%, transparent);
+    }
+
+    .swatch {
+      display: block;
+      border: 1px solid #ccc;
+      flex-shrink: 0;
+    }
+
+    .btn.on .swatch { border-color: var(--c); }
+
+    #map { line-height: 0; }
+    #map svg { display: block; width: 100%; height: auto; }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid #ddd;
+    }
+
+    .source { font-size: 9px; color: #aaa; letter-spacing: 0.03em; }
+    .hint   { font-size: 9px; color: #bbb; letter-spacing: 0.03em; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hdr-label">Interactive Map</div>
+  <h2>Darlington's overlapping administrative boundaries</h2>
+  <p class="hdr-sub">Toggle layers to reveal each boundary system. Where areas overlap, stripe patterns combine — making the overlap immediately visible.</p>
+  <hr class="rule">
+
+  <div class="toggles" id="toggles"></div>
+  <div id="map"></div>
+
+  <div class="footer">
+    <span class="source">Source: ONS Open Geography Portal (2024–26)</span>
+    <span class="hint">Click layers to show &amp; hide</span>
+  </div>
+
+</div>
+
+<script type="module">
+  import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+
+  const W = 720, H = 560, PAD = 36;
+  const BG = "#FEF4F4";
+  const FONT = "'Geist', -apple-system, sans-serif";
+
+  // ── Layer config ─────────────────────────────────────────────────────────────
+  // Every layer has a unique stripe angle — when two layers overlap you see
+  // both patterns superimposed, making the administrative confusion legible.
+  const LAYERS = [
+    {
+      id:        "durham-ua",
+      label:     "County Durham UA",
+      color:     "#374151",
+      angle:     0,      // ━━━ horizontal
+      tile:      10,
+      lineW:     2.5,
+      strokeW:   2.5,
+      mapLabel:  "COUNTY DURHAM UA",
+      labelSize: 9,
+    },
+    {
+      id:        "ca-tv",
+      label:     "Tees Valley CA",
+      color:     "#059669",
+      angle:     45,     // ╲╲╲ diagonal right
+      tile:      10,
+      lineW:     2.5,
+      strokeW:   3,
+      mapLabel:  "TEES VALLEY CA",
+      labelSize: 9,
+    },
+    {
+      id:        "ca-ne",
+      label:     "North East CA",
+      color:     "#7C3AED",
+      angle:     135,    // ╱╱╱ diagonal left
+      tile:      10,
+      lineW:     2.5,
+      strokeW:   3,
+      mapLabel:  "NORTH EAST CA",
+      labelSize: 9,
+    },
+    {
+      id:        "police-durham",
+      label:     "Durham Constabulary",
+      color:     "#B45309",
+      angle:     90,     // ┃┃┃ vertical
+      tile:      10,
+      lineW:     2.5,
+      strokeW:   2,
+      mapLabel:  "DURHAM CONSTABULARY",
+      labelSize: 8,
+    },
+    {
+      id:        "police-cleveland",
+      label:     "Cleveland Police",
+      color:     "#BE185D",
+      angle:     22,     // ╲ shallow diagonal right
+      tile:      10,
+      lineW:     2.5,
+      strokeW:   2,
+      mapLabel:  "CLEVELAND POLICE",
+      labelSize: 8,
+    },
+    {
+      id:        "police-northumbria",
+      label:     "Northumbria Police",
+      color:     "#1D4ED8",
+      angle:     158,    // ╱ shallow diagonal left
+      tile:      10,
+      lineW:     2.5,
+      strokeW:   2,
+      mapLabel:  "NORTHUMBRIA POLICE",
+      labelSize: 8,
+    },
+    {
+      id:        "icb",
+      label:     "NHS NE & NC ICB",
+      color:     "#0E7490",
+      angle:     67,     // steep diagonal, wider spacing — reads as context
+      tile:      14,
+      lineW:     2,
+      strokeW:   2,
+      mapLabel:  "NE & NC ICB",
+      labelSize: 8,
+    },
+  ];
+
+  // ── SVG ──────────────────────────────────────────────────────────────────────
+  const svg = d3.select("#map")
+    .append("svg")
+    .attr("width", W)
+    .attr("height", H)
+    .attr("viewBox", `0 0 ${W} ${H}`);
+
+  svg.append("rect").attr("width", W).attr("height", H).attr("fill", BG);
+
+  const defs = svg.append("defs");
+
+  defs.append("clipPath").attr("id", "clip")
+    .append("rect").attr("width", W).attr("height", H);
+
+  // Stripe pattern per layer: a single vertical line in a square tile,
+  // rotated to the desired angle via patternTransform.
+  LAYERS.forEach(({ id, color, angle, tile, lineW }) => {
+    defs.append("pattern")
+      .attr("id",               `stripe-${id}`)
+      .attr("x",                0)
+      .attr("y",                0)
+      .attr("width",            tile)
+      .attr("height",           tile)
+      .attr("patternUnits",     "userSpaceOnUse")
+      .attr("patternTransform", `rotate(${angle})`)
+      .append("line")
+      .attr("x1",          tile / 2)
+      .attr("y1",          0)
+      .attr("x2",          tile / 2)
+      .attr("y2",          tile)
+      .attr("stroke",      color)
+      .attr("stroke-width", lineW);
+  });
+
+  const g = svg.append("g").attr("clip-path", "url(#clip)");
+
+  // ── Load data ─────────────────────────────────────────────────────────────────
+  const [cas, uas, icb, police] = await Promise.all([
+    d3.json("combined-authorities.geojson"),
+    d3.json("unitary-authorities.geojson"),
+    d3.json("icb.geojson"),
+    d3.json("police-forces.geojson")
+  ]);
+
+  const projection = d3.geoMercator().fitExtent(
+    [[PAD, PAD], [W - PAD, H - PAD]],
+    { type: "FeatureCollection", features: [...cas.features, ...uas.features, ...police.features] }
+  );
+
+  const path = d3.geoPath().projection(projection);
+
+  const feat = {
+    "durham-ua":          uas.features.find(f => f.properties.CTYUA25NM === "County Durham"),
+    "ca-tv":              cas.features.find(f => f.properties.CAUTH25NM === "Tees Valley"),
+    "ca-ne":              cas.features.find(f => f.properties.CAUTH25NM === "North East"),
+    "police-durham":      police.features.find(f => f.properties.PFA24NM === "Durham"),
+    "police-cleveland":   police.features.find(f => f.properties.PFA24NM === "Cleveland"),
+    "police-northumbria": police.features.find(f => f.properties.PFA24NM === "Northumbria"),
+    "icb":                icb.features[0],
+    "darlington":         uas.features.find(f => f.properties.CTYUA25NM === "Darlington"),
+  };
+
+  // ── Base: faint grey context ──────────────────────────────────────────────────
+  g.selectAll(".ctx")
+    .data(police.features)
+    .join("path")
+    .attr("d", path)
+    .attr("fill", "#E5E3DE")
+    .attr("fill-opacity", 0.5)
+    .attr("stroke", "#c8c6c2")
+    .attr("stroke-width", 0.5);
+
+  // ── Stripe fills (drawn first so all stripes are visible beneath borders) ─────
+  const fillGroups = {};
+  LAYERS.forEach(layer => {
+    const f = feat[layer.id];
+    if (!f) return;
+    const fg = g.append("g").style("display", "none");
+    fillGroups[layer.id] = fg;
+    fg.append("path").datum(f)
+      .attr("d", path)
+      .attr("fill", `url(#stripe-${layer.id})`)
+      .attr("stroke", "none");
+  });
+
+  // ── Strokes (drawn above all fills so borders are always crisp) ───────────────
+  const strokeGroups = {};
+  LAYERS.forEach(layer => {
+    const f = feat[layer.id];
+    if (!f) return;
+    const sg = g.append("g").style("display", "none");
+    strokeGroups[layer.id] = sg;
+
+    // White halo for separation where boundaries sit on top of each other
+    sg.append("path").datum(f)
+      .attr("d", path)
+      .attr("fill", "none")
+      .attr("stroke", BG)
+      .attr("stroke-width", layer.strokeW + 4)
+      .attr("stroke-linejoin", "round");
+
+    // Coloured border
+    sg.append("path").datum(f)
+      .attr("d", path)
+      .attr("fill", "none")
+      .attr("stroke", layer.color)
+      .attr("stroke-width", layer.strokeW)
+      .attr("stroke-linejoin", "round");
+  });
+
+  // ── Labels (appear with their layer) ─────────────────────────────────────────
+  const labelGroups = {};
+  LAYERS.forEach(layer => {
+    const f = feat[layer.id];
+    if (!f) return;
+    const [cx, cy] = path.centroid(f);
+    if (isNaN(cx) || isNaN(cy)) return;
+
+    const lg = g.append("g")
+      .attr("transform", `translate(${cx}, ${cy})`)
+      .style("display", "none");
+    labelGroups[layer.id] = lg;
+
+    [BG, layer.color].forEach((fill, i) => {
+      lg.append("text")
+        .attr("text-anchor", "middle")
+        .attr("font-size",   layer.labelSize)
+        .attr("font-family", FONT)
+        .attr("font-weight", "700")
+        .attr("letter-spacing", "0.07em")
+        .attr("stroke",      i === 0 ? BG : "none")
+        .attr("stroke-width", i === 0 ? 4 : 0)
+        .attr("paint-order", "stroke")
+        .attr("fill",        fill)
+        .attr("fill-opacity", i === 0 ? 1 : 0.9)
+        .text(layer.mapLabel);
+    });
+  });
+
+  // ── Darlington — always on top ────────────────────────────────────────────────
+  g.append("path").datum(feat["darlington"])
+    .attr("d", path)
+    .attr("fill", "#E8002D")
+    .attr("fill-opacity", 0.22)
+    .attr("stroke", "#E8002D")
+    .attr("stroke-width", 2.5)
+    .attr("stroke-linejoin", "round");
+
+  const [dlx, dly] = path.centroid(feat["darlington"]);
+  [BG, "#C0001F"].forEach((fill, i) => {
+    g.append("text")
+      .attr("x", dlx).attr("y", dly)
+      .attr("text-anchor", "middle")
+      .attr("font-size", 9)
+      .attr("font-family", FONT)
+      .attr("font-weight", "700")
+      .attr("letter-spacing", "0.08em")
+      .attr("stroke",      i === 0 ? BG : "none")
+      .attr("stroke-width", i === 0 ? 4 : 0)
+      .attr("paint-order", "stroke")
+      .attr("fill", fill)
+      .text("DARLINGTON");
+  });
+
+  // ── Toggle buttons with stripe swatch ────────────────────────────────────────
+  const active    = new Set();
+  const container = document.getElementById("toggles");
+
+  LAYERS.forEach(layer => {
+    const btn = document.createElement("button");
+    btn.className = "btn";
+    btn.style.setProperty("--c", layer.color);
+
+    // Mini SVG showing the actual stripe for this layer
+    const sw = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    sw.setAttribute("class", "swatch");
+    sw.setAttribute("width", "18");
+    sw.setAttribute("height", "12");
+    sw.setAttribute("viewBox", "0 0 18 12");
+
+    const sd = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    const pat = document.createElementNS("http://www.w3.org/2000/svg", "pattern");
+    pat.setAttribute("id",               `sw-${layer.id}`);
+    pat.setAttribute("x",                "0");
+    pat.setAttribute("y",                "0");
+    pat.setAttribute("width",            String(layer.tile));
+    pat.setAttribute("height",           String(layer.tile));
+    pat.setAttribute("patternUnits",     "userSpaceOnUse");
+    pat.setAttribute("patternTransform", `rotate(${layer.angle})`);
+    const ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    ln.setAttribute("x1",           String(layer.tile / 2));
+    ln.setAttribute("y1",           "0");
+    ln.setAttribute("x2",           String(layer.tile / 2));
+    ln.setAttribute("y2",           String(layer.tile));
+    ln.setAttribute("stroke",       layer.color);
+    ln.setAttribute("stroke-width", String(layer.lineW));
+    pat.appendChild(ln);
+    sd.appendChild(pat);
+    sw.appendChild(sd);
+
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("width",  "18");
+    rect.setAttribute("height", "12");
+    rect.setAttribute("fill",   `url(#sw-${layer.id})`);
+    sw.appendChild(rect);
+
+    btn.appendChild(sw);
+    btn.appendChild(document.createTextNode(layer.label));
+
+    btn.addEventListener("click", () => {
+      const on = active.has(layer.id);
+      if (on) {
+        active.delete(layer.id);
+        btn.classList.remove("on");
+        fillGroups[layer.id]?.style("display",   "none");
+        strokeGroups[layer.id]?.style("display", "none");
+        labelGroups[layer.id]?.style("display",  "none");
+      } else {
+        active.add(layer.id);
+        btn.classList.add("on");
+        fillGroups[layer.id]?.style("display",   null);
+        strokeGroups[layer.id]?.style("display", null);
+        labelGroups[layer.id]?.style("display",  null);
+      }
+    });
+
+    container.appendChild(btn);
+  });
+</script>
+</body>
+</html>
