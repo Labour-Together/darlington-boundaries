@@ -104,20 +104,34 @@
     .footer {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-end;
       margin-top: 10px;
       padding-top: 8px;
       border-top: 1px solid #ddd;
     }
 
-    .source { font-size: 9px; color: #aaa; letter-spacing: 0.03em; }
-    .hint   { font-size: 9px; color: #bbb; letter-spacing: 0.03em; }
+    .footer-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .footer-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 7px;
+    }
+
+    .source   { font-size: 9px; color: #aaa; letter-spacing: 0.03em; }
+    .made-by  { font-size: 9px; color: #bbb; letter-spacing: 0.03em; }
+    .hint     { font-size: 9px; color: #bbb; letter-spacing: 0.03em; }
+    .tl-logo  { width: 72px; opacity: 0.65; display: block; }
   </style>
 </head>
 <body>
 <div class="wrap">
 
-  <div class="hdr-label">Interactive Map</div>
   <h2>Darlington's overlapping administrative boundaries</h2>
   <p class="hdr-sub">Toggle layers to reveal each boundary system. Where areas overlap, stripe patterns combine — making the overlap immediately visible.</p>
   <hr class="rule">
@@ -126,8 +140,14 @@
   <div id="map"></div>
 
   <div class="footer">
-    <span class="source">Source: ONS Open Geography Portal (2024–26)</span>
-    <span class="hint">Click layers to show &amp; hide</span>
+    <div class="footer-left">
+      <span class="source">Source: ONS Open Geography Portal (2024–26)</span>
+      <span class="made-by">Made by Dylan Cridland</span>
+    </div>
+    <div class="footer-right">
+      <span class="hint">Click layers to show &amp; hide</span>
+      <img src="logo.png" alt="Think Labour" class="tl-logo">
+    </div>
   </div>
 
 </div>
