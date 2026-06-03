@@ -127,6 +127,36 @@
     .made-by  { font-size: 9px; color: #bbb; letter-spacing: 0.03em; }
     .hint     { font-size: 9px; color: #bbb; letter-spacing: 0.03em; }
     .tl-logo  { width: 72px; opacity: 0.65; display: block; }
+
+    .export-bar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .export-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border: 1.5px solid #111;
+      background: #111;
+      color: #FEF4F4;
+      font-family: 'Geist', sans-serif;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+    }
+
+    .export-btn:hover { background: #333; border-color: #333; }
+    .export-btn.secondary {
+      background: transparent;
+      color: #111;
+    }
+    .export-btn.secondary:hover { background: #f0eeea; }
   </style>
 </head>
 <body>
@@ -142,12 +172,17 @@
   <div class="footer">
     <div class="footer-left">
       <span class="source">Source: ONS Open Geography Portal (2024–26)</span>
-      <span class="made-by">Made by Dylan Cridland</span>
+      <span class="made-by">Made by Dylan Cridland · ThinkLabour</span>
     </div>
     <div class="footer-right">
       <span class="hint">Click layers to show &amp; hide</span>
       <img src="logo.png" alt="Think Labour" class="tl-logo">
     </div>
+  </div>
+
+  <div class="export-bar" style="margin-top:12px;">
+    <button class="export-btn" id="btn-png">↓ Download PNG (3×)</button>
+    <button class="export-btn secondary" id="btn-svg">↓ Download SVG</button>
   </div>
 
 </div>
@@ -164,81 +199,88 @@
   // both patterns superimposed, making the administrative confusion legible.
   const LAYERS = [
     {
-      id:        "durham-ua",
-      label:     "County Durham UA",
-      color:     "#374151",
-      angle:     0,      // ━━━ horizontal
-      tile:      10,
-      lineW:     2.5,
-      strokeW:   2.5,
-      mapLabel:  "COUNTY DURHAM UA",
-      labelSize: 9,
+      id:          "durham-ua",
+      label:       "County Durham UA",
+      color:       "#374151",
+      angle:       0,
+      tile:        10,
+      lineW:       2.5,
+      strokeW:     2.5,
+      mapLabel:    "COUNTY DURHAM UA",
+      labelSize:   9,
+      labelOffset: [-30, -14],  // nudge left + up away from Durham Constabulary
     },
     {
-      id:        "ca-tv",
-      label:     "Tees Valley CA",
-      color:     "#059669",
-      angle:     45,     // ╲╲╲ diagonal right
-      tile:      10,
-      lineW:     2.5,
-      strokeW:   3,
-      mapLabel:  "TEES VALLEY CA",
-      labelSize: 9,
+      id:          "ca-tv",
+      label:       "Tees Valley CA",
+      color:       "#059669",
+      angle:       45,
+      tile:        10,
+      lineW:       2.5,
+      strokeW:     3,
+      mapLabel:    "TEES VALLEY CA",
+      labelSize:   9,
+      labelOffset: [38, -6],    // right + up away from Darlington label
     },
     {
-      id:        "ca-ne",
-      label:     "North East CA",
-      color:     "#7C3AED",
-      angle:     135,    // ╱╱╱ diagonal left
-      tile:      10,
-      lineW:     2.5,
-      strokeW:   3,
-      mapLabel:  "NORTH EAST CA",
-      labelSize: 9,
+      id:          "ca-ne",
+      label:       "North East CA",
+      color:       "#7C3AED",
+      angle:       135,
+      tile:        10,
+      lineW:       2.5,
+      strokeW:     3,
+      mapLabel:    "NORTH EAST CA",
+      labelSize:   9,
+      labelOffset: [0, 0],
     },
     {
-      id:        "police-durham",
-      label:     "Durham Constabulary",
-      color:     "#B45309",
-      angle:     90,     // ┃┃┃ vertical
-      tile:      10,
-      lineW:     2.5,
-      strokeW:   2,
-      mapLabel:  "DURHAM CONSTABULARY",
-      labelSize: 8,
+      id:          "police-durham",
+      label:       "Durham Constabulary",
+      color:       "#B45309",
+      angle:       90,
+      tile:        10,
+      lineW:       2.5,
+      strokeW:     2,
+      mapLabel:    "DURHAM CONSTABULARY",
+      labelSize:   8,
+      labelOffset: [30, 14],    // right + down away from County Durham UA
     },
     {
-      id:        "police-cleveland",
-      label:     "Cleveland Police",
-      color:     "#BE185D",
-      angle:     22,     // ╲ shallow diagonal right
-      tile:      10,
-      lineW:     2.5,
-      strokeW:   2,
-      mapLabel:  "CLEVELAND POLICE",
-      labelSize: 8,
+      id:          "police-cleveland",
+      label:       "Cleveland Police",
+      color:       "#BE185D",
+      angle:       22,
+      tile:        10,
+      lineW:       2.5,
+      strokeW:     2,
+      mapLabel:    "CLEVELAND POLICE",
+      labelSize:   8,
+      labelOffset: [38, 18],    // below Tees Valley label
     },
     {
-      id:        "police-northumbria",
-      label:     "Northumbria Police",
-      color:     "#1D4ED8",
-      angle:     158,    // ╱ shallow diagonal left
-      tile:      10,
-      lineW:     2.5,
-      strokeW:   2,
-      mapLabel:  "NORTHUMBRIA POLICE",
-      labelSize: 8,
+      id:          "police-northumbria",
+      label:       "Northumbria Police",
+      color:       "#1D4ED8",
+      angle:       158,
+      tile:        10,
+      lineW:       2.5,
+      strokeW:     2,
+      mapLabel:    "NORTHUMBRIA POLICE",
+      labelSize:   8,
+      labelOffset: [0, 0],
     },
     {
-      id:        "icb",
-      label:     "NHS NE & NC ICB",
-      color:     "#0E7490",
-      angle:     67,     // steep diagonal, wider spacing — reads as context
-      tile:      14,
-      lineW:     2,
-      strokeW:   2,
-      mapLabel:  "NE & NC ICB",
-      labelSize: 8,
+      id:          "icb",
+      label:       "NHS NE & NC ICB",
+      color:       "#0E7490",
+      angle:       67,
+      tile:        14,
+      lineW:       2,
+      strokeW:     2,
+      mapLabel:    "NE & NC ICB",
+      labelSize:   8,
+      labelOffset: [0, 0],
     },
   ];
 
@@ -359,9 +401,10 @@
     if (!f) return;
     const [cx, cy] = path.centroid(f);
     if (isNaN(cx) || isNaN(cy)) return;
+    const [ox, oy] = layer.labelOffset ?? [0, 0];
 
     const lg = g.append("g")
-      .attr("transform", `translate(${cx}, ${cy})`)
+      .attr("transform", `translate(${cx + ox}, ${cy + oy})`)
       .style("display", "none");
     labelGroups[layer.id] = lg;
 
@@ -469,6 +512,64 @@
     });
 
     container.appendChild(btn);
+  });
+
+  // ── Pre-select layers for blog view ──────────────────────────────────────────
+  const DEFAULT_ON = ["icb", "police-durham", "ca-tv"];
+  DEFAULT_ON.forEach(id => {
+    const btn = container.querySelector(`button:nth-child(${LAYERS.findIndex(l => l.id === id) + 1})`);
+    if (btn) btn.click();
+  });
+
+  // ── Export helpers ────────────────────────────────────────────────────────────
+  function getExportSVG() {
+    const svgEl = document.querySelector("#map svg");
+    // Embed font-face so the SVG renders correctly when opened standalone
+    const styleEl = svgEl.querySelector("defs") || svgEl.insertBefore(
+      document.createElementNS("http://www.w3.org/2000/svg", "defs"), svgEl.firstChild
+    );
+    const fontStyle = document.createElementNS("http://www.w3.org/2000/svg", "style");
+    fontStyle.textContent = `@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');`;
+    styleEl.prepend(fontStyle);
+    const serialized = new XMLSerializer().serializeToString(svgEl);
+    styleEl.removeChild(fontStyle);
+    return serialized;
+  }
+
+  document.getElementById("btn-svg").addEventListener("click", () => {
+    const svg = getExportSVG();
+    const blob = new Blob([svg], { type: "image/svg+xml" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "darlington-boundaries.svg";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById("btn-png").addEventListener("click", async () => {
+    const SCALE = 3;
+    const svgEl = document.querySelector("#map svg");
+    const svg = getExportSVG();
+    const blob = new Blob([svg], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+
+    await document.fonts.ready;
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width  = W * SCALE;
+      canvas.height = H * SCALE;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(SCALE, SCALE);
+      ctx.drawImage(img, 0, 0, W, H);
+      URL.revokeObjectURL(url);
+      const a = document.createElement("a");
+      a.download = "darlington-boundaries.png";
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    };
+    img.src = url;
   });
 </script>
 </body>

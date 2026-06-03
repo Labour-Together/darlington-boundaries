@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Darlington — Administrative Boundaries</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #FEF4F4;
+      font-family: 'Geist', -apple-system, sans-serif;
+      padding: 28px 0 20px;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 0 4px; }
+    #map { line-height: 0; }
+    #map svg { display: block; width: 100%; height: auto; }
+
+    .export-bar { display: flex; gap: 6px; margin-top: 12px; }
+    .export-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px;
+      border: 1.5px solid #111; background: #111; color: #FEF4F4;
+      font-family: 'Geist', sans-serif; font-size: 9.5px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      cursor: pointer; transition: background 0.1s;
+    }
+    .export-btn:hover { background: #333; border-color: #333; }
+    .export-btn.secondary { background: transparent; color: #111; }
+    .export-btn.secondary:hover { background: #f0eeea; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div id="map"></div>
+  <div class="export-bar">
+    <button class="export-btn" id="btn-png">↓ Download PNG (3×)</button>
+    <button class="export-btn secondary" id="btn-svg">↓ Download SVG</button>
+  </div>
+</div>
+
+<script type="module">
+  import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+
+  const W = 720, MAP_H = 520, PAD = 36;
+  const TITLE_H = 50, FOOTER_H = 76;
+  const TOTAL_H = TITLE_H + MAP_H + FOOTER_H;
+  const BG = "#FEF4F4";
+  const FONT = "'Geist', -apple-system, sans-serif";
+
+  const LAYERS = [
+    { id: "durham-ua",          color: "#374151", angle: 0,   tile: 10, lineW: 2.5, strokeW: 2.5, mapLabel: "COUNTY DURHAM UA",    labelSize: 9, labelOffset: [-30, -14] },
+    { id: "ca-tv",              color: "#059669", angle: 45,  tile: 10, lineW: 2.5, strokeW: 3,   mapLabel: "TEES VALLEY CA",      labelSize: 9, labelOffset: [38, -6]  },
+    { id: "ca-ne",              color: "#7C3AED", angle: 135, tile: 10, lineW: 2.5, strokeW: 3,   mapLabel: "NORTH EAST CA",       labelSize: 9, labelOffset: [0, 0]    },
+    { id: "police-durham",      color: "#B45309", angle: 90,  tile: 10, lineW: 2.5, strokeW: 2,   mapLabel: "DURHAM CONSTABULARY", labelSize: 8, labelOffset: [30, 14]  },
+    { id: "police-cleveland",   color: "#BE185D", angle: 22,  tile: 10, lineW: 2.5, strokeW: 2,   mapLabel: "CLEVELAND POLICE",    labelSize: 8, labelOffset: [38, 18]  },
+    { id: "police-northumbria", color: "#1D4ED8", angle: 158, tile: 10, lineW: 2.5, strokeW: 2,   mapLabel: "NORTHUMBRIA POLICE",  labelSize: 8, labelOffset: [0, 0]    },
+    { id: "icb",                color: "#0E7490", angle: 67,  tile: 14, lineW: 2,   strokeW: 2,   mapLabel: "NE & NC ICB",         labelSize: 8, labelOffset: [0, 0]    },
+  ];
+
+  const VISIBLE = new Set(["icb", "police-durham", "ca-tv"]);
+
+  // ── Fetch logo as base64 so it embeds into the SVG ───────────────────────────
+  const logoBase64 = await fetch("logo.png")
+    .then(r => r.blob())
+    .then(blob => new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    }));
+
+  // ── SVG ──────────────────────────────────────────────────────────────────────
+  const svg = d3.select("#map")
+    .append("svg")
+    .attr("width", W)
+    .attr("height", TOTAL_H)
+    .attr("viewBox", `0 0 ${W} ${TOTAL_H}`);
+
+  svg.append("rect").attr("width", W).attr("height", TOTAL_H).attr("fill", BG);
+
+  const defs = svg.append("defs");
+
+  defs.append("clipPath").attr("id", "clip")
+    .append("rect").attr("y", TITLE_H).attr("width", W).attr("height", MAP_H);
+
+  LAYERS.forEach(({ id, color, angle, tile, lineW }) => {
+    defs.append("pattern")
+      .attr("id", `stripe-${id}`).attr("x", 0).attr("y", 0)
+      .attr("width", tile).attr("height", tile)
+      .attr("patternUnits", "userSpaceOnUse")
+      .attr("patternTransform", `rotate(${angle})`)
+      .append("line")
+      .attr("x1", tile / 2).attr("y1", 0)
+      .attr("x2", tile / 2).attr("y2", tile)
+      .attr("stroke", color).attr("stroke-width", lineW);
+  });
+
+  // ── Title ─────────────────────────────────────────────────────────────────────
+  svg.append("text")
+    .attr("x", 4).attr("y", 18)
+    .attr("font-family", FONT).attr("font-size", 15).attr("font-weight", "700")
+    .attr("letter-spacing", "0.04em").attr("fill", "#111")
+    .text("DARLINGTON'S OVERLAPPING ADMINISTRATIVE BOUNDARIES");
+
+  svg.append("line")
+    .attr("x1", 4).attr("x2", W - 4).attr("y1", 32).attr("y2", 32)
+    .attr("stroke", "#111").attr("stroke-width", 1.5);
+
+  // ── Map group (translated below title) ───────────────────────────────────────
+  const g = svg.append("g")
+    .attr("clip-path", "url(#clip)")
+    .attr("transform", `translate(0, ${TITLE_H})`);
+
+  // ── Load data ─────────────────────────────────────────────────────────────────
+  const [cas, uas, icb, police] = await Promise.all([
+    d3.json("combined-authorities.geojson"),
+    d3.json("unitary-authorities.geojson"),
+    d3.json("icb.geojson"),
+    d3.json("police-forces.geojson")
+  ]);
+
+  const projection = d3.geoMercator().fitExtent(
+    [[PAD, PAD], [W - PAD, MAP_H - PAD]],
+    { type: "FeatureCollection", features: [...cas.features, ...uas.features, ...police.features] }
+  );
+
+  const path = d3.geoPath().projection(projection);
+
+  const feat = {
+    "durham-ua":          uas.features.find(f => f.properties.CTYUA25NM === "County Durham"),
+    "ca-tv":              cas.features.find(f => f.properties.CAUTH25NM === "Tees Valley"),
+    "ca-ne":              cas.features.find(f => f.properties.CAUTH25NM === "North East"),
+    "police-durham":      police.features.find(f => f.properties.PFA24NM === "Durham"),
+    "police-cleveland":   police.features.find(f => f.properties.PFA24NM === "Cleveland"),
+    "police-northumbria": police.features.find(f => f.properties.PFA24NM === "Northumbria"),
+    "icb":                icb.features[0],
+    "darlington":         uas.features.find(f => f.properties.CTYUA25NM === "Darlington"),
+  };
+
+  g.selectAll(".ctx").data(police.features).join("path")
+    .attr("d", path).attr("fill", "#E5E3DE").attr("fill-opacity", 0.5)
+    .attr("stroke", "#c8c6c2").attr("stroke-width", 0.5);
+
+  LAYERS.filter(l => VISIBLE.has(l.id)).forEach(layer => {
+    const f = feat[layer.id];
+    if (!f) return;
+    g.append("path").datum(f).attr("d", path)
+      .attr("fill", `url(#stripe-${layer.id})`).attr("stroke", "none");
+  });
+
+  LAYERS.filter(l => VISIBLE.has(l.id)).forEach(layer => {
+    const f = feat[layer.id];
+    if (!f) return;
+    g.append("path").datum(f).attr("d", path).attr("fill", "none")
+      .attr("stroke", BG).attr("stroke-width", layer.strokeW + 4).attr("stroke-linejoin", "round");
+    g.append("path").datum(f).attr("d", path).attr("fill", "none")
+      .attr("stroke", layer.color).attr("stroke-width", layer.strokeW).attr("stroke-linejoin", "round");
+  });
+
+  LAYERS.filter(l => VISIBLE.has(l.id)).forEach(layer => {
+    const f = feat[layer.id];
+    if (!f) return;
+    const [cx, cy] = path.centroid(f);
+    if (isNaN(cx) || isNaN(cy)) return;
+    const [ox, oy] = layer.labelOffset ?? [0, 0];
+    const lg = g.append("g").attr("transform", `translate(${cx + ox}, ${cy + oy})`);
+    [BG, layer.color].forEach((fill, i) => {
+      lg.append("text")
+        .attr("text-anchor", "middle").attr("font-size", layer.labelSize)
+        .attr("font-family", FONT).attr("font-weight", "700").attr("letter-spacing", "0.07em")
+        .attr("stroke", i === 0 ? BG : "none").attr("stroke-width", i === 0 ? 4 : 0)
+        .attr("paint-order", "stroke").attr("fill", fill)
+        .attr("fill-opacity", i === 0 ? 1 : 0.9).text(layer.mapLabel);
+    });
+  });
+
+  g.append("path").datum(feat["darlington"]).attr("d", path)
+    .attr("fill", "#E8002D").attr("fill-opacity", 0.22)
+    .attr("stroke", "#E8002D").attr("stroke-width", 2.5).attr("stroke-linejoin", "round");
+
+  const [dlx, dly] = path.centroid(feat["darlington"]);
+  [BG, "#C0001F"].forEach((fill, i) => {
+    g.append("text")
+      .attr("x", dlx).attr("y", dly).attr("text-anchor", "middle")
+      .attr("font-size", 9).attr("font-family", FONT).attr("font-weight", "700")
+      .attr("letter-spacing", "0.08em")
+      .attr("stroke", i === 0 ? BG : "none").attr("stroke-width", i === 0 ? 4 : 0)
+      .attr("paint-order", "stroke").attr("fill", fill).text("DARLINGTON");
+  });
+
+  // ── Footer ────────────────────────────────────────────────────────────────────
+  const footerY = TITLE_H + MAP_H;
+
+  svg.append("line")
+    .attr("x1", 4).attr("x2", W - 4).attr("y1", footerY + 24).attr("y2", footerY + 24)
+    .attr("stroke", "#ddd").attr("stroke-width", 1);
+
+  svg.append("text")
+    .attr("x", 4).attr("y", footerY + 40)
+    .attr("font-family", FONT).attr("font-size", 9).attr("fill", "#aaa")
+    .attr("letter-spacing", "0.03em")
+    .text("Source: ONS Open Geography Portal (2024–26)");
+
+  svg.append("text")
+    .attr("x", 4).attr("y", footerY + 53)
+    .attr("font-family", FONT).attr("font-size", 9).attr("fill", "#bbb")
+    .attr("letter-spacing", "0.03em")
+    .text("Made by Dylan Cridland · ThinkLabour");
+
+  svg.append("image")
+    .attr("href", logoBase64)
+    .attr("x", W - 80).attr("y", footerY + 26)
+    .attr("width", 72).attr("height", 28)
+    .attr("preserveAspectRatio", "xMaxYMid meet")
+    .style("opacity", "0.65");
+
+  // ── Export ────────────────────────────────────────────────────────────────────
+  function getExportSVG() {
+    const svgEl = document.querySelector("#map svg");
+    const defsEl = svgEl.querySelector("defs");
+    const fontStyle = document.createElementNS("http://www.w3.org/2000/svg", "style");
+    fontStyle.textContent = `@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');`;
+    defsEl.prepend(fontStyle);
+    const serialized = new XMLSerializer().serializeToString(svgEl);
+    defsEl.removeChild(fontStyle);
+    return serialized;
+  }
+
+  document.getElementById("btn-svg").addEventListener("click", () => {
+    const blob = new Blob([getExportSVG()], { type: "image/svg+xml" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "darlington-boundaries.svg";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById("btn-png").addEventListener("click", async () => {
+    const SCALE = 3;
+    const blob = new Blob([getExportSVG()], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    await document.fonts.ready;
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width  = W * SCALE;
+      canvas.height = TOTAL_H * SCALE;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(SCALE, SCALE);
+      ctx.drawImage(img, 0, 0, W, TOTAL_H);
+      URL.revokeObjectURL(url);
+      const a = document.createElement("a");
+      a.download = "darlington-boundaries.png";
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    };
+    img.src = url;
+  });
+</script>
+</body>
+</html>
